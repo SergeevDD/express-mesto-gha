@@ -1,23 +1,34 @@
 const user = require('../models/user');
-const trowError = require('../utils/errors')
+const sendError = require('../utils/errors');
+const ObjectId = require('mongoose').Types.ObjectId;
 
 module.exports.getUsers = (req, res) => {
   user.find({})
     .then(users => res.send({ data: users }))
-    .catch(err => trowError(res, err));
+    .catch(err => sendError(res, err));
 };
 
 module.exports.createUser = (req, res) => {
   const { name, about, avatar } = req.body;
   user.create({ name, about, avatar })
     .then(user => res.send({ data: user }))
-    .catch(err => trowError(res, err));
+    .catch(err => sendError(res, err));
 };
 
 module.exports.getUserById = (req, res) => {
-  user.findById(req.params.userId)
-    .then(users => res.send({ data: users }))
-    .catch(err => trowError(res, err));
+  if (ObjectId.isValid(req.params.userId)) {
+    user.findById(req.params.userId)
+      .then(users => {
+        if (users) {
+          res.send({ data: users })
+        } else {
+          return Promise.reject({ name: 'CastError' })
+        }
+      })
+      .catch(err => sendError(res, err));
+  } else {
+    sendError(res, { name: 'ValidationError' })
+  }
 };
 
 module.exports.setUserInfo = (req, res) => {
@@ -30,8 +41,8 @@ module.exports.setUserInfo = (req, res) => {
       runValidators: true,
     }
   )
-    .then(users => {res.send({ data: users })})
-    .catch(err => trowError(res, err));
+    .then(users => { res.send({ data: users }) })
+    .catch(err => sendError(res, err));
 };
 
 module.exports.setAvatar = (req, res) => {
@@ -45,5 +56,5 @@ module.exports.setAvatar = (req, res) => {
     }
   )
     .then(users => res.send({ data: users }))
-    .catch(err => trowError(res, err));
+    .catch(err => sendError(res, err));
 };

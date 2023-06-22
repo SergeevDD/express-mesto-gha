@@ -1,6 +1,6 @@
-const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
+const sendError = require('./utils/errors')
 const { PORT = 3000 } = process.env;
 
 const app = express();
@@ -18,6 +18,7 @@ app.use((req, res, next) => {
 ///////////////////////////////
 app.use('/users', require('./routes/users'));
 app.use('/cards', require('./routes/cards'));
+app.use('*',function(req, res) { sendError(res,{name:'CastError'}) });
 
 app.listen(PORT, () => {
   console.log(`Сервер запущен на порту : ${PORT}`)
