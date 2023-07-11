@@ -1,6 +1,7 @@
 const user = require('../models/user');
 const sendError = require('../utils/errors');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken')
 const ObjectId = require('mongoose').Types.ObjectId;
 
 module.exports.getUsers = (req, res) => {
@@ -60,3 +61,22 @@ module.exports.setAvatar = (req, res) => {
     .then(users => res.send({ data: users }))
     .catch(err => sendError(res, err));
 };
+
+module.exports.login = (req, res) => {
+  const { email, password } = req.body;
+  user.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign(
+        { _id: user._id },
+        'sekretka',
+        { expiresIn: '7d' }
+      );
+      res.cookie('jwt', token, {
+        maxAge: 3600000,
+        httpOnly: true
+      })
+    })
+    .end()
+    .catch (err => sendError(res, err));
+};
+
