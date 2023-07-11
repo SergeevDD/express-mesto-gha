@@ -2,7 +2,7 @@ const card = require('../models/card');
 const sendError = require('../utils/errors');
 const ObjectId = require('mongoose').Types.ObjectId;
 
-module.exports.createCard = (req, res) => {
+module.exports.createCard = (req, res, next) => {
 
   const {
     name,
@@ -19,19 +19,35 @@ module.exports.createCard = (req, res) => {
     likes,
     createAt
   })
-    .then(card => res.send({ data: card }))
-    .catch(err => sendError(res, err));
+    .then(card => {
+      if (!card) {
+        throw new NotFoundError('Не удалось создать картточку');
+      }
+      res.send({ data: card })})
+    .catch(next);
 };
 
-module.exports.getCards = (req, res) => {
+module.exports.getCards = (req, res, next) => {
   card.find({})
     .populate('owner')
-    .then(cards => res.send({ data: cards }))
-    .catch(err => sendError(res, err));
+    .then(cards => {
+      if (!cards) {
+        throw new NotFoundError('Карточки не найдены');
+      }
+      res.send({ data: cards })})
+    .catch(next);
 };
 
-module.exports.deleteCard = (req, res) => {
-  if (ObjectId.isValid(req.params.cardId)) {
+module.exports.deleteCard = (req, res, next) => {
+  card.findById(req.params.cardId)
+    .then((card) => {
+      if (card.owner === req.user) {
+        return card.remove();
+      }
+    })
+    .then((xx) => {console.log(xx);})
+    .catch(next)
+  /* if (ObjectId.isValid(req.params.cardId)) {
     card.findByIdAndRemove(req.params.cardId)
       .then(cards => {
         if (cards) {
@@ -43,10 +59,10 @@ module.exports.deleteCard = (req, res) => {
       .catch(err => sendError(res, err));
   } else {
     sendError(res, { name: 'ValidationError' })
-  }
+  } */
 };
 
-module.exports.addLike = (req, res) => {
+module.exports.addLike = (req, res, next) => {
   if (ObjectId.isValid(req.params.cardId)) {
     card.findByIdAndUpdate(req.params.cardId,
       { $addToSet: { likes: req.user._id } },
@@ -58,16 +74,18 @@ module.exports.addLike = (req, res) => {
         if (cards) {
           res.send({ data: cards })
         } else {
-          return Promise.reject({ name: 'CastError' })
+          if (!card) {
+            throw new NotFoundError('Не удалось создать карту');
+          }
         }
       })
-      .catch(err => sendError(res, err));
+      .catch(next);
   } else {
-    sendError(res, { name: 'ValidationError' })
+    throw new IncorrectDataError('Переданы некорректные данные');
   }
 };
 
-module.exports.removeLike = (req, res) => {
+module.exports.removeLike = (req, res, next) => {
   if (ObjectId.isValid(req.params.cardId)) {
     card.findByIdAndUpdate(
       req.params.cardId,
@@ -81,11 +99,11 @@ module.exports.removeLike = (req, res) => {
         if (cards) {
           res.send({ data: cards })
         } else {
-          return Promise.reject({ name: 'CastError' })
+          throw new NotFoundError('Данные не обновлены');
         }
       })
-      .catch(err => sendError(res, err));
+      .catch(next);
   } else {
-    sendError(res, { name: 'ValidationError' })
+    throw new IncorrectDataError('Переданы некорректные данные');
   }
 };

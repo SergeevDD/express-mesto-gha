@@ -4,37 +4,59 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken')
 const ObjectId = require('mongoose').Types.ObjectId;
 
-module.exports.getUsers = (req, res) => {
+module.exports.getUsers = (req, res, next) => {
   user.find({})
-    .then(users => res.send({ data: users }))
-    .catch(err => sendError(res, err));
+    .then(users => {
+      if (!users) {
+        throw new NotFoundError('Пользователи не найдены');
+      }
+      res.send({ data: users })
+    })
+    .catch(next);
 };
 
-module.exports.createUser = (req, res) => {
+module.exports.createUser = (req, res, next) => {
   const { name, about, avatar, email, password } = req.body;
   bcrypt.hash(password, 10)
     .then((hash) => user.create({ name, about, avatar, email, hash }))
-    .then(user => res.send({ data: user }))
-    .catch(err => sendError(res, err));
+    .then(user => {
+      if (!user) {
+        throw new NotFoundError('При создании пользователя произошла ошибка');
+      }
+      res.send({ data: user })
+    })
+    .catch(next);
 };
 
-module.exports.getUserById = (req, res) => {
+module.exports.getCurrentUser = (req, res, next) => {
+  const user = req.user
+  user.find({ user })
+    .then(user => {
+      if (!user) {
+        throw new NotFoundError('Информация о пользователе отсутствует');
+      }
+      res.send({ data: user })
+    })
+    .catch(next);
+};
+
+module.exports.getUserById = (req, res, next) => {
   if (ObjectId.isValid(req.params.userId)) {
     user.findById(req.params.userId)
       .then(users => {
         if (users) {
           res.send({ data: users })
         } else {
-          return Promise.reject({ name: 'CastError' })
+          throw new NotFoundError('Информация о пользователе отсутствует');
         }
       })
-      .catch(err => sendError(res, err));
+      .catch(next);
   } else {
-    sendError(res, { name: 'ValidationError' })
+    throw new IncorrectDataError('Переданы некорректные данные');
   }
 };
 
-module.exports.setUserInfo = (req, res) => {
+module.exports.setUserInfo = (req, res, next) => {
   const { name, about } = req.body;
   user.findByIdAndUpdate(
     req.user._id,
@@ -44,11 +66,16 @@ module.exports.setUserInfo = (req, res) => {
       runValidators: true,
     }
   )
-    .then(users => { res.send({ data: users }) })
-    .catch(err => sendError(res, err));
+    .then(users => {
+      if (!users) {
+        throw new NotFoundError('Не удалось обновить данные пользователя');
+      }
+      res.send({ data: users })
+    })
+    .catch(next);
 };
 
-module.exports.setAvatar = (req, res) => {
+module.exports.setAvatar = (req, res, next) => {
   const { avatar } = req.body;
   user.findByIdAndUpdate(
     req.user._id,
@@ -58,14 +85,22 @@ module.exports.setAvatar = (req, res) => {
       runValidators: true,
     }
   )
-    .then(users => res.send({ data: users }))
-    .catch(err => sendError(res, err));
+    .then(user => {
+      if (!user) {
+        throw new NotFoundError('Не удалось сменить аватар');
+      }
+      res.send({ data: user })
+    })
+    .catch(next);
 };
 
-module.exports.login = (req, res) => {
+module.exports.login = (req, res, next) => {
   const { email, password } = req.body;
-  user.findUserByCredentials(email, password)
+  user.findUserByCredentials(email).select('+password')
     .then((user) => {
+      if (!user) {
+        throw new AuthenticationError('Пользователь не найден');
+      }
       const token = jwt.sign(
         { _id: user._id },
         'sekretka',
@@ -77,6 +112,6 @@ module.exports.login = (req, res) => {
       })
     })
     .end()
-    .catch (err => sendError(res, err));
+    .catch(next);
 };
 
