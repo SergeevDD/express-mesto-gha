@@ -1,11 +1,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const sendError = require('./utils/errors')
-const { PORT = 3000 } = process.env;
+const {
+  PORT = 3000,
+  DB_URI='mongodb://localhost:27017/mestodb'
+} = process.env;
 
 const app = express();
 app.use(express.json());
-mongoose.connect('mongodb://localhost:27017/mestodb ', {
+mongoose.connect(DB_URI, {
   family: 4
 });
 //Временное решение для авторизации
