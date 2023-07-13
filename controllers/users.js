@@ -1,8 +1,6 @@
 const user = require('../models/user');
-const sendError = require('../utils/errors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken')
-const ObjectId = require('mongoose').Types.ObjectId;
 
 module.exports.getUsers = (req, res, next) => {
   user.find({})
@@ -18,20 +16,21 @@ module.exports.getUsers = (req, res, next) => {
 module.exports.createUser = (req, res, next) => {
   const { name, about, avatar, email, password } = req.body;
   bcrypt.hash(password, 10)
-    .then((hash) => user.create({ name, about, avatar, email, hash }))
+    .then((hash) => user.create({ name, about, avatar, email, password: hash }))
     .then(user => {
       if (!user) {
         throw new NotFoundError('При создании пользователя произошла ошибка');
       }
-      res.send({ data: user })
+      res.send({ data: {email,name} })
     })
     .catch(next);
 };
 
 module.exports.getCurrentUser = (req, res, next) => {
-  const user = req.user
-  user.find({ user })
+  const currentUser = req.user
+  user.findById(currentUser._id)
     .then(user => {
+
       if (!user) {
         throw new NotFoundError('Информация о пользователе отсутствует');
       }
@@ -41,7 +40,7 @@ module.exports.getCurrentUser = (req, res, next) => {
 };
 
 module.exports.getUserById = (req, res, next) => {
-  if (ObjectId.isValid(req.params.userId)) {
+
     user.findById(req.params.userId)
       .then(users => {
         if (users) {
@@ -51,9 +50,6 @@ module.exports.getUserById = (req, res, next) => {
         }
       })
       .catch(next);
-  } else {
-    throw new IncorrectDataError('Переданы некорректные данные');
-  }
 };
 
 module.exports.setUserInfo = (req, res, next) => {
@@ -96,22 +92,25 @@ module.exports.setAvatar = (req, res, next) => {
 
 module.exports.login = (req, res, next) => {
   const { email, password } = req.body;
-  user.findUserByCredentials(email).select('+password')
+  user.findOne({ email }).select('+password')
     .then((user) => {
       if (!user) {
-        throw new AuthenticationError('Пользователь не найден');
+        throw new AuthenticationError('Неправильные почта или пароль');
       }
-      const token = jwt.sign(
-        { _id: user._id },
-        'sekretka',
-        { expiresIn: '7d' }
-      );
-      res.cookie('jwt', token, {
-        maxAge: 3600000,
-        httpOnly: true
-      })
+      return bcrypt.compare(password, user.password)
+        .then((match) => {
+          if (!match) {
+            throw new AuthenticationError('Неправильные почта или пароль');
+          }
+          const token = jwt.sign({ _id: user._id }, 'sekretka', { expiresIn: '7d' });
+          res.cookie('jwt', token, {
+            maxAge: 3600000,
+            httpOnly: true
+          })
+          res.send({ data: user })
+        })
+        .catch((err) => console.log('owubka', err))
     })
-    .end()
     .catch(next);
 };
 

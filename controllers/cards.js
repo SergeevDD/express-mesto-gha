@@ -1,5 +1,4 @@
 const card = require('../models/card');
-const sendError = require('../utils/errors');
 const ObjectId = require('mongoose').Types.ObjectId;
 
 module.exports.createCard = (req, res, next) => {
@@ -40,12 +39,14 @@ module.exports.getCards = (req, res, next) => {
 
 module.exports.deleteCard = (req, res, next) => {
   card.findById(req.params.cardId)
-    .then((card) => {
-      if (card.owner === req.user) {
-        return card.remove();
+    .then((dbCard) => {
+      if (dbCard.owner.toString() === req.user) {
+       return card.deleteOne({_id: dbCard._id});
+      }else {
+        throw new AuthenticationError('Не твоя карта, жук')
       }
     })
-    .then((xx) => {console.log(xx);})
+    .then((card) => res.send({ data: card }))
     .catch(next)
   /* if (ObjectId.isValid(req.params.cardId)) {
     card.findByIdAndRemove(req.params.cardId)
