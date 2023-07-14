@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const AuthenticationError = require('../errors/authentication-err');
 
 module.exports = (req, res, next) => {
   const  token  = req.cookies.jwt;
@@ -6,7 +7,6 @@ module.exports = (req, res, next) => {
     throw new AuthenticationError('Передан некорректный или отсутствующий токен');
   }
   let payload;
-
   try {
     payload = jwt.verify(token, 'sekretka');
   } catch (err){

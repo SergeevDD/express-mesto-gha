@@ -21,7 +21,7 @@ module.exports.createCard = (req, res, next) => {
   })
     .then(card => {
       if (!card) {
-        throw new NotFoundError('Не удалось создать картточку');
+        throw new NotFoundError('Не удалось создать карточку');
       }
       res.send(card)
     })

@@ -24,11 +24,12 @@ app.post('/signin', celebrate({
 }), login);
 app.post('/signup', celebrate({
   body: Joi.object().keys({
+    name: Joi.string().min(2).max(30),
     email: Joi.string().required().min(2).max(30).email(),
     password: Joi.string().required().min(2),
     about: Joi.string().min(2).max(30),
     avatar: Joi.string().regex(/(http|https)\:\/\/[a-zA-Z0-9\-\.\/\_]+/)
-  }).unknown(true),
+  }),
 }), createUser);
 
 app.use(cookieParser());
