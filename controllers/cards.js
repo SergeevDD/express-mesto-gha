@@ -43,8 +43,11 @@ module.exports.getCards = (req, res, next) => {
 module.exports.deleteCard = (req, res, next) => {
   card.findById(req.params.cardId)
     .then((dbCard) => {
+      if (!dbCard) {
+        throw new NotFoundError('Карта не надена');
+      }
       if (dbCard.owner.toString() !== req.user) {
-        throw new AccessError('Нет прав на удаление')
+        throw new AccessError('Нет прав на удаление');
       }
       return card.deleteOne({ _id: dbCard._id })
         .then((c) => {
@@ -52,9 +55,8 @@ module.exports.deleteCard = (req, res, next) => {
             return dbCard
           }
         })
+        .then((removedCard) => res.send({ data: removedCard }))
     })
-    .catch(() => { throw new NotFoundError('Карта не надена') })
-    .then((removedCard) => res.send({ data: removedCard }))
     .catch(next)
 };
 
@@ -63,7 +65,6 @@ module.exports.addLike = (req, res, next) => {
     { $addToSet: { likes: req.user } },
   )
     .then(cards => {
-      console.log('gg', cards);
       if (cards) {
         res.send({ data: cards })
       } else {

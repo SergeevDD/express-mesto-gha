@@ -32,7 +32,6 @@ module.exports.createUser = (req, res, next) => {
 
 module.exports.getCurrentUser = (req, res, next) => {
   const userId = req.user
-  console.log(userId, '<<');
   user.findById(userId)
     .then(user => {
       if (!user) {
@@ -58,7 +57,6 @@ module.exports.getUserById = (req, res, next) => {
 
 module.exports.setUserInfo = (req, res, next) => {
   const { name, about } = req.body;
-  console.log(req.user);
   user.findByIdAndUpdate(
     req.user,
     { name, about },
