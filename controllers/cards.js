@@ -43,7 +43,7 @@ module.exports.getCards = (req, res, next) => {
 module.exports.deleteCard = (req, res, next) => {
   card.findById(req.params.cardId)
     .then((dbCard) => {
-      if (!dbCard.owner.toString() === req.user) {
+      if (dbCard.owner.toString() !== req.user) {
         throw new AccessError('Нет прав на удаление')
       }
       return card.deleteOne({ _id: dbCard._id })

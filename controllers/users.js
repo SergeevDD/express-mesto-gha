@@ -24,7 +24,7 @@ module.exports.createUser = (req, res, next) => {
       user.create({ name, about, avatar, email, password: hash }))
     .catch(() => { throw new DuplicateErrorError('Введенная почта уже используется') })
     .then(user => {
-    const {password, ...result} = user.toObject();
+      const { password, ...result } = user.toObject();
       res.send({ data: result })
     })
     .catch(next);
@@ -80,13 +80,16 @@ module.exports.setAvatar = (req, res, next) => {
   const { avatar } = req.body;
   user.findByIdAndUpdate(
     req.user,
-    { avatar }
+    { avatar },
+    {
+      new: true,
+    }
   )
     .then(user => {
       if (!user) {
         throw new NotFoundError('Не удалось сменить аватар');
       }
-      res.send({avatar:user.avatar})
+      res.send({ avatar: user.avatar })
     })
     .catch(next);
 };
