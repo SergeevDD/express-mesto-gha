@@ -1,16 +1,17 @@
 const card = require('../models/card');
 const ObjectId = require('mongoose').Types.ObjectId;
+const NotFoundError = require('../errors/not-found-err');
+const AccessError = require('../errors/access-err');
 
 module.exports.createCard = (req, res, next) => {
 
   const {
     name,
     link,
-    owner = req.user._id,
+    owner = req.user,
     likes = [],
     createAt
   } = req.body;
-
   card.create({
     name,
     link,
@@ -22,7 +23,8 @@ module.exports.createCard = (req, res, next) => {
       if (!card) {
         throw new NotFoundError('Не удалось создать картточку');
       }
-      res.send({ data: card })})
+      res.send(card)
+    })
     .catch(next);
 };
 
@@ -33,78 +35,57 @@ module.exports.getCards = (req, res, next) => {
       if (!cards) {
         throw new NotFoundError('Карточки не найдены');
       }
-      res.send({ data: cards })})
+      res.send({ data: cards })
+    })
     .catch(next);
 };
 
 module.exports.deleteCard = (req, res, next) => {
   card.findById(req.params.cardId)
     .then((dbCard) => {
-      if (dbCard.owner.toString() === req.user) {
-       return card.deleteOne({_id: dbCard._id});
-      }else {
-        throw new AuthenticationError('Не твоя карта, жук')
+      if (!dbCard.owner.toString() === req.user) {
+        throw new AccessError('Нет прав на удаление')
       }
+      return card.deleteOne({ _id: dbCard._id })
+        .then((c) => {
+          if (c.deletedCount === 1) {
+            return dbCard
+          }
+        })
     })
-    .then((card) => res.send({ data: card }))
+    .catch(() => { throw new NotFoundError('Карта не надена') })
+    .then((removedCard) => res.send({ data: removedCard }))
     .catch(next)
-  /* if (ObjectId.isValid(req.params.cardId)) {
-    card.findByIdAndRemove(req.params.cardId)
-      .then(cards => {
-        if (cards) {
-          res.send({ data: cards })
-        } else {
-          return Promise.reject({ name: 'CastError' })
-        }
-      })
-      .catch(err => sendError(res, err));
-  } else {
-    sendError(res, { name: 'ValidationError' })
-  } */
 };
 
 module.exports.addLike = (req, res, next) => {
-  if (ObjectId.isValid(req.params.cardId)) {
-    card.findByIdAndUpdate(req.params.cardId,
-      { $addToSet: { likes: req.user._id } },
-      {
-        new: true,
-        runValidators: true,
-      })
-      .then(cards => {
-        if (cards) {
-          res.send({ data: cards })
-        } else {
-          if (!card) {
-            throw new NotFoundError('Не удалось создать карту');
-          }
+  card.findByIdAndUpdate(req.params.cardId,
+    { $addToSet: { likes: req.user } },
+  )
+    .then(cards => {
+      console.log('gg', cards);
+      if (cards) {
+        res.send({ data: cards })
+      } else {
+        if (!cards) {
+          throw new NotFoundError(`Данные не обновлены, карточка с id:${req.params.cardId} отсутствует`);
         }
-      })
-      .catch(next);
-  } else {
-    throw new IncorrectDataError('Переданы некорректные данные');
-  }
+      }
+    })
+    .catch(next);
 };
 
 module.exports.removeLike = (req, res, next) => {
-  if (ObjectId.isValid(req.params.cardId)) {
-    card.findByIdAndUpdate(
-      req.params.cardId,
-      { $pull: { likes: req.user._id } },
-      {
-        new: true,
-        runValidators: true,
+  card.findByIdAndUpdate(
+    req.params.cardId,
+    { $pull: { likes: req.user } },
+  )
+    .then(cards => {
+      if (cards) {
+        res.send({ data: cards })
+      } else {
+        throw new NotFoundError(`Данные не обновлены, карточка с id:${req.params.cardId} отсутствует`);
       }
-    )
-      .then(cards => {
-        if (cards) {
-          res.send({ data: cards })
-        } else {
-          throw new NotFoundError('Данные не обновлены');
-        }
-      })
-      .catch(next);
-  } else {
-    throw new IncorrectDataError('Переданы некорректные данные');
-  }
+    })
+    .catch(next);
 };

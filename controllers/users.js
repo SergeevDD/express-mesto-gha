@@ -1,6 +1,10 @@
 const user = require('../models/user');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken')
+const jwt = require('jsonwebtoken');
+const NotFoundError = require('../errors/not-found-err');
+const AuthenticationError = require('../errors/authentication-err');
+const IncorrectDataError = require('../errors/incorrect-err');
+const DuplicateErrorError = require('../errors/duplicate-err');
 
 module.exports.getUsers = (req, res, next) => {
   user.find({})
@@ -16,21 +20,20 @@ module.exports.getUsers = (req, res, next) => {
 module.exports.createUser = (req, res, next) => {
   const { name, about, avatar, email, password } = req.body;
   bcrypt.hash(password, 10)
-    .then((hash) => user.create({ name, about, avatar, email, password: hash }))
+    .then((hash) =>
+      user.create({ name, about, avatar, email, password: hash }))
+    .catch(() => { throw new DuplicateErrorError('Введенная почта уже используется') })
     .then(user => {
-      if (!user) {
-        throw new NotFoundError('При создании пользователя произошла ошибка');
-      }
-      res.send({ data: {email,name} })
+      res.send({ data: user })
     })
     .catch(next);
 };
 
 module.exports.getCurrentUser = (req, res, next) => {
-  const currentUser = req.user
-  user.findById(currentUser._id)
+  const userId = req.user
+  console.log(userId, '<<');
+  user.findById(userId)
     .then(user => {
-
       if (!user) {
         throw new NotFoundError('Информация о пользователе отсутствует');
       }
@@ -41,21 +44,22 @@ module.exports.getCurrentUser = (req, res, next) => {
 
 module.exports.getUserById = (req, res, next) => {
 
-    user.findById(req.params.userId)
-      .then(users => {
-        if (users) {
-          res.send({ data: users })
-        } else {
-          throw new NotFoundError('Информация о пользователе отсутствует');
-        }
-      })
-      .catch(next);
+  user.findById(req.params.userId)
+    .then(users => {
+      if (users) {
+        res.send({ data: users })
+      } else {
+        throw new NotFoundError('Информация о пользователе отсутствует');
+      }
+    })
+    .catch(next);
 };
 
 module.exports.setUserInfo = (req, res, next) => {
   const { name, about } = req.body;
+  console.log(req.user);
   user.findByIdAndUpdate(
-    req.user._id,
+    req.user,
     { name, about },
     {
       new: true,
@@ -74,12 +78,8 @@ module.exports.setUserInfo = (req, res, next) => {
 module.exports.setAvatar = (req, res, next) => {
   const { avatar } = req.body;
   user.findByIdAndUpdate(
-    req.user._id,
-    { avatar },
-    {
-      new: true,
-      runValidators: true,
-    }
+    req.user,
+    { avatar }
   )
     .then(user => {
       if (!user) {
@@ -107,9 +107,9 @@ module.exports.login = (req, res, next) => {
             maxAge: 3600000,
             httpOnly: true
           })
-          res.send({ data: user })
+          res.send({ data: `${user.email} -> Авторицазия прошла успешно` })
         })
-        .catch((err) => console.log('owubka', err))
+        .catch(() => { throw new AuthenticationError('Ошибка создания токена') })
     })
     .catch(next);
 };

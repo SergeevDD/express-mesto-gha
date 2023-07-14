@@ -15,8 +15,17 @@ router.get('/:userId', celebrate({
     userId: Joi.string().alphanum().length(24),
   }),
 }), getUserById);
-router.patch('/me/avatar', setAvatar);
-router.patch('/me', setUserInfo);
+router.patch('/me/avatar', celebrate({
+  body: Joi.object().keys({
+    avatar: Joi.string().regex(/(http|https)\:\/\/[a-zA-Z0-9\-\.\/\_]+/)
+  }),
+}), setAvatar);
+router.patch('/me', celebrate({
+  body: Joi.object().keys({
+    name: Joi.string().required().min(2).max(30),
+    about: Joi.string().required().min(2).max(30)
+  }),
+}), setUserInfo);
 
 
 module.exports = router;
