@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const NotFoundError = require('../errors/not-found-err');
 const AuthenticationError = require('../errors/authentication-err');
-const IncorrectDataError = require('../errors/incorrect-err');
 const DuplicateErrorError = require('../errors/duplicate-err');
 
 module.exports.getUsers = (req, res, next) => {
@@ -104,7 +103,7 @@ module.exports.login = (req, res, next) => {
           if (!match) {
             throw new AuthenticationError('Неправильные почта или пароль');
           }
-          const token = jwt.sign({ _id: user._id }, 'sekretka', { expiresIn: '7d' });
+          const token = jwt.sign({ _id: user._id }, process.env.SECRET_KEY, { expiresIn: '7d' });
           res.cookie('jwt', token, {
             maxAge: 3600000,
             httpOnly: true

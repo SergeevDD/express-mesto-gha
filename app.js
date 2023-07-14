@@ -5,10 +5,8 @@ const { celebrate, Joi, errors } = require('celebrate');
 const auth = require('./middlewares/auth');
 const cookieParser = require('cookie-parser');
 const NotFoundError = require('./errors/not-found-err');
-const {
-  PORT = 3000,
-  DB_URI = 'mongodb://localhost:27017/mestodb'
-} = process.env;
+require('dotenv').config();
+const { PORT, DB_URI } = process.env;
 
 const app = express();
 app.use(express.json());
